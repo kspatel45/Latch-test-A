@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Signifi Kiosk Latch Tester (Android Compatible)</title>
+    <title>Signifi Kiosk Latch Tester</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -206,7 +206,7 @@
                     </div>
                     <div class="flex gap-2">
                         <button id="btn-connect" onclick="connectSerial()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-xl shadow-lg transition flex items-center">
-                            <i class="fa-brands fa-usb mr-2"></i> Select COM Port / USB Device
+                            <i class="fa-brands fa-usb mr-2"></i> Select COM Port
                         </button>
                         <button id="btn-disconnect" onclick="disconnectSerial()" class="hidden bg-red-100 hover:bg-red-200 text-red-700 px-6 py-2 rounded-xl shadow transition border border-red-300">
                             Disconnect
@@ -357,14 +357,14 @@
     </main>
 
     <footer class="bg-white border-t py-4 text-center">
-        <p class="text-gray-400 text-xs">Signifi Kiosk Latch Tester (Android Compatible)</p>
+        <p class="text-gray-400 text-xs">Signifi Kiosk Latch Tester</p>
     </footer>
 
     <script>
         let port;
         let writer;
         let reader; 
-        let usbDevice = null;
+        let socketConnection = null; // Fallback for old Android Chrome via WebSocket/TCP Serial Bridge
         let isRunning = false;
         let stopSignal = false;
         let currentMode = 'CAN';
@@ -384,7 +384,7 @@
         };
         
         for (let i = 1; i <= 16; i++) {
-            const hexId = i.toString(16).padStart(2, '0'); 
+            const hexId = i.toString(16).padStart(2, '0'); // 01, 02, ..., 09, 0a, 0b, 0c, 0d, 0e, 0f, 10
             
             // USB Defaults
             defaultConfig.usb.latches[i] = { 
@@ -395,7 +395,7 @@
                 testFb: `u${i}_ok` 
             };
             
-            // CAN Defaults
+            // Pre-configured CAN Commands exact match from image
             defaultConfig.can.latches[i] = { 
                 scanCmd: `t01f251${hexId}`, 
                 openFb: `t01f3736f${hexId}`, 
@@ -416,10 +416,6 @@
             updateConfigSummary();
             updateScanStatusMsg(); 
             switchMode('CAN');
-            
-            if (!navigator.serial && !navigator.usb) {
-                showNotification("Warning: Web Serial / WebUSB API not supported on this browser/device.", "error");
-            }
             updateTestButtonState();
         });
 
@@ -494,11 +490,11 @@
         }
 
         async function connectSerial() {
-            try {
-                const baud = parseInt(config.baudRate) || 115200;
-                
-                // Android / Browser compatibility check: Use Web Serial if available, fallback to WebUSB
-                if (navigator.serial) {
+            const baud = parseInt(config.baudRate) || 115200;
+
+            // Check if native Web Serial API is supported
+            if (navigator.serial) {
+                try {
                     port = await navigator.serial.requestPort();
                     await port.open({ baudRate: baud });
                     
@@ -506,49 +502,57 @@
                     textEncoder.readable.pipeTo(port.writable);
                     writer = textEncoder.writable.getWriter();
                     readSerialLoop();
-                } else if (navigator.usb) {
-                    // Fallback for Android Chrome using WebUSB (CDC-ACM / Generic USB Serial)
-                    usbDevice = await navigator.usb.requestDevice({ filters: [] });
-                    await usbDevice.open();
-                    if (usbDevice.configuration === null) {
-                        await usbDevice.selectConfiguration(1);
-                    }
-                    await usbDevice.claimInterface(0);
-                    
-                    writer = {
-                        write: async (data) => {
-                            const encoder = new TextEncoder();
-                            const bytes = encoder.encode(data);
-                            // Standard bulk out endpoint transfer (typically endpoint 1 or 2)
-                            await usbDevice.transferOut(2, bytes);
-                        },
-                        releaseLock: () => {}
-                    };
-                    
-                    readWebUSBDataLoop();
-                } else {
-                    throw new Error("No Web Serial or WebUSB support available on this browser.");
-                }
 
-                document.getElementById('connection-status').textContent = `Connected (${baud} baud)`;
-                document.getElementById('connection-status').classList.add('text-green-600', 'font-bold');
-                document.getElementById('btn-connect').classList.add('hidden');
-                document.getElementById('btn-disconnect').classList.remove('hidden');
-                
-                log("System", `Port connected successfully at ${baud} baud.`);
-            } catch (error) {
-                console.error(error);
-                showNotification("Failed to connect to device/COM port: " + error.message, "error");
+                    document.getElementById('connection-status').textContent = `Connected (Web Serial - ${baud} baud)`;
+                    document.getElementById('connection-status').classList.add('text-green-600', 'font-bold');
+                    document.getElementById('btn-connect').classList.add('hidden');
+                    document.getElementById('btn-disconnect').classList.remove('hidden');
+                    
+                    log("System", `Serial port connected via Web Serial at ${baud} baud.`);
+                    return;
+                } catch (error) {
+                    console.warn("Web Serial failed or cancelled, prompting WebSocket fallback...", error);
+                }
+            }
+
+            // Fallback for old Android Chrome / non-supporting browsers using a WebSocket bridge (e.g. ws://localhost:8080)
+            let bridgeURL = prompt("Web Serial not supported on this browser/tablet.\nEnter WebSocket Serial Bridge URL (e.g., ws://192.168.1.50:8080):", "ws://localhost:8080");
+            if (!bridgeURL) return;
+
+            try {
+                socketConnection = new WebSocket(bridgeURL);
+                socketConnection.onopen = () => {
+                    document.getElementById('connection-status').textContent = `Connected (Bridge: ${bridgeURL})`;
+                    document.getElementById('connection-status').classList.add('text-green-600', 'font-bold');
+                    document.getElementById('btn-connect').classList.add('hidden');
+                    document.getElementById('btn-disconnect').classList.remove('hidden');
+                    log("System", `Connected to WebSocket Serial Bridge at ${bridgeURL}`);
+                };
+                socketConnection.onmessage = (event) => {
+                    const value = event.data;
+                    if (value) {
+                        serialBuffer += value;
+                        document.dispatchEvent(receivedDataEvent);
+                        log("Received", value.trim());
+                    }
+                };
+                socketConnection.onerror = (err) => {
+                    showNotification("WebSocket Bridge connection error.", "error");
+                    log("Error", "WebSocket connection failed.");
+                };
+                socketConnection.onclose = () => {
+                    disconnectSerial();
+                };
+            } catch (e) {
+                showNotification("Failed to connect via WebSocket bridge.", "error");
             }
         }
 
         async function disconnectSerial() {
-            try {
-                if (reader) await reader.cancel();
-                if (writer && writer.releaseLock) { writer.releaseLock(); writer = null; }
-                if (port) { await port.close(); port = null; }
-                if (usbDevice) { await usbDevice.close(); usbDevice = null; }
-            } catch (e) { /* Ignore */ }
+            if (reader) await reader.cancel();
+            if (writer) { writer.releaseLock(); writer = null; }
+            if (port) { await port.close(); port = null; }
+            if (socketConnection) { socketConnection.close(); socketConnection = null; }
             
             document.getElementById('connection-status').textContent = "Not connected";
             document.getElementById('connection-status').classList.remove('text-green-600', 'font-bold');
@@ -563,48 +567,21 @@
 
         async function readSerialLoop() {
             if (!port) return;
+            const textDecoder = new TextDecoderStream();
+            const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
+            reader = textDecoder.readable.getReader();
             try {
-                // Compatible reader loop for older Android WebViews avoiding TextEncoderStream piping issues
-                reader = port.readable.getReader();
-                const decoder = new TextDecoder();
                 while (true) {
                     const { value, done } = await reader.read();
                     if (done) break;
                     if (value) {
-                        const decoded = decoder.decode(value, { stream: true });
-                        serialBuffer += decoded;
+                        serialBuffer += value;
                         document.dispatchEvent(receivedDataEvent);
-                        log("Received", decoded.trim()); 
+                        log("Received", value.trim()); 
                     }
                 }
             } catch (error) { /* Ignore */ } 
-            finally { 
-                if (reader) {
-                    reader.releaseLock();
-                    reader = null;
-                }
-                disconnectSerial(); 
-            }
-        }
-
-        async function readWebUSBDataLoop() {
-            if (!usbDevice) return;
-            const decoder = new TextDecoder();
-            try {
-                while (usbDevice && usbDevice.opened) {
-                    // Bulk in endpoint transfer (typically endpoint 1 or 2)
-                    const result = await usbDevice.transferIn(1, 64);
-                    if (result && result.data) {
-                        const value = decoder.decode(result.data);
-                        if (value) {
-                            serialBuffer += value;
-                            document.dispatchEvent(receivedDataEvent);
-                            log("Received", value.trim());
-                        }
-                    }
-                    await sleep(50);
-                }
-            } catch (error) { /* Ignore disconnects */ }
+            finally { disconnectSerial(); }
         }
         
         function getNextSerialLine() {
@@ -626,6 +603,7 @@
             return null;
         }
 
+        // Helper to strip dynamic trailing timestamp (8 digits/hex characters) from CAN responses
         function cleanPayload(line) {
             if (!line) return '';
             let cleaned = line.trim();
@@ -636,29 +614,29 @@
         }
 
         async function sendCommand(cmd) {
-            if ((!port && !usbDevice) || !writer) {
-                log("Error", "No COM port / USB device connected.");
-                return false;
-            }
-            try {
-                let terminator = config.lineEnding === "\\r\\n" ? "\r\n" : (config.lineEnding === "\\r" ? "\r" : (config.lineEnding === "\\n" ? "\n" : ""));
-                
-                // Native android serialization stream check fallback
-                if (port && port.writable) {
-                    const textEncoder = new TextEncoder();
-                    const writerToken = port.writable.getWriter();
-                    await writerToken.write(textEncoder.encode(cmd + terminator));
-                    writerToken.releaseLock();
-                } else {
-                    await writer.write(cmd + terminator);
-                }
-
+            let terminator = config.lineEnding === "\\r\\n" ? "\r\n" : (config.lineEnding === "\\r" ? "\r" : (config.lineEnding === "\\n" ? "\n" : ""));
+            
+            // Send via WebSocket Bridge if active
+            if (socketConnection && socketConnection.readyState === WebSocket.OPEN) {
+                socketConnection.send(cmd + terminator);
                 log("Sent", cmd);
                 return true;
-            } catch (err) {
-                log("Error", "Failed to send: " + err.message);
-                return false;
             }
+
+            // Send via Web Serial if active
+            if (port && writer) {
+                try {
+                    await writer.write(cmd + terminator);
+                    log("Sent", cmd);
+                    return true;
+                } catch (err) {
+                    log("Error", "Failed to send.");
+                    return false;
+                }
+            }
+
+            log("Error", "No COM port or bridge connected.");
+            return false;
         }
 
         const sleep = (ms) => new Promise(r => setTimeout(r, ms));
@@ -688,7 +666,8 @@
         }
         
         function updateTestButtonState() {
-            document.getElementById('btn-run-test').disabled = !(scannedOpenLatches.length > 0 && (port || usbDevice) && !isRunning);
+            const isConnected = (port && writer) || (socketConnection && socketConnection.readyState === WebSocket.OPEN);
+            document.getElementById('btn-run-test').disabled = !(scannedOpenLatches.length > 0 && isConnected && !isRunning);
         }
 
         function updateScanStatusMsg() {
@@ -704,7 +683,8 @@
         }
 
         async function runCalibration() {
-            if (!port && !usbDevice) { showNotification("Connect COM port / USB first.", "error"); return; }
+            const isConnected = (port && writer) || (socketConnection && socketConnection.readyState === WebSocket.OPEN);
+            if (!isConnected) { showNotification("Connect COM port first.", "error"); return; }
             const cmd = config.calibrationCmd;
             if(!cmd) { showNotification("No calibration command configured.", "error"); return; }
             
@@ -720,7 +700,8 @@
                 document.getElementById('tester-name').focus();
                 return;
             }
-            if (!port && !usbDevice) { showNotification("Connect COM port / USB first.", "error"); return; }
+            const isConnected = (port && writer) || (socketConnection && socketConnection.readyState === WebSocket.OPEN);
+            if (!isConnected) { showNotification("Connect COM port first.", "error"); return; }
             if (isRunning) return;
 
             isRunning = true;
@@ -806,7 +787,8 @@
             const testerName = document.getElementById('tester-name').value;
             if (!testerName.trim()) { showNotification("Enter Tester Name.", "error"); return; }
             if (scannedOpenLatches.length === 0) { showNotification("No OPEN latches to test.", "error"); return; }
-            if (!port && !usbDevice) return;
+            const isConnected = (port && writer) || (socketConnection && socketConnection.readyState === WebSocket.OPEN);
+            if (!isConnected) return;
             if (isRunning) return;
 
             isRunning = true;
@@ -903,7 +885,8 @@
         }
 
         async function adminTestScan(i) {
-            if (!port && !usbDevice) { showNotification("Connect port first on Dashboard.", "error"); return; }
+            const isConnected = (port && writer) || (socketConnection && socketConnection.readyState === WebSocket.OPEN);
+            if (!isConnected) { showNotification("Connect COM port first on Dashboard.", "error"); return; }
             const scanCmd = document.getElementById(`latch-config-${i}-scanCmd`).value.trim();
             const openFb = document.getElementById(`latch-config-${i}-openFb`).value.trim().toLowerCase();
             const closeFb = document.getElementById(`latch-config-${i}-closeFb`).value.trim().toLowerCase();
@@ -961,7 +944,8 @@
         }
 
         async function adminTestCmd(i) {
-            if (!port && !usbDevice) { showNotification("Connect port first on Dashboard.", "error"); return; }
+            const isConnected = (port && writer) || (socketConnection && socketConnection.readyState === WebSocket.OPEN);
+            if (!isConnected) { showNotification("Connect COM port first on Dashboard.", "error"); return; }
             const testCmd = document.getElementById(`latch-config-${i}-testCmd`).value.trim();
             const testFb = document.getElementById(`latch-config-${i}-testFb`).value.trim().toLowerCase();
             const statusEl = document.getElementById(`admin-test-status-${i}`);
@@ -1215,6 +1199,7 @@
             container.innerHTML = html;
         }
 
+        // Manual override helper: clicking a slot box toggles it into scanned-open state so testing can be unlocked immediately
         function toggleSlotManual(i) {
             const index = scannedOpenLatches.indexOf(i);
             if (index > -1) {
