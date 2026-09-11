@@ -1,52 +1,74 @@
-import os
-import sys
+import webview
 import serial
 import serial.tools.list_ports
-import webview
+import time
 
-class Api:
+class SerialAPI:
     def __init__(self):
-        self.serial_port = None
+        self.ser = None
 
     def get_ports(self):
-        ports = serial.tools.list_ports.comports()
-        return [port.device for port in ports]
-
-    def connect(self, port_name, baudrate=115200):
+        """Returns a list of available COM ports on the system."""
         try:
-            self.serial_port = serial.Serial(port_name, baudrate=baudrate, timeout=1)
+            ports = [p.device for p in serial.tools.list_ports.comports()]
+            return ports
+        except Exception as e:
+            print(f"Error fetching ports: {e}")
+            return []
+
+    def connect(self, port, baudrate):
+        """Connects to the specified serial port."""
+        try:
+            if self.ser and self.ser.is_open:
+                self.ser.close()
+            
+            self.ser = serial.Serial(port, int(baudrate), timeout=0.1)
             return True
         except Exception as e:
-            print(f"Connection error: {e}")
+            print(f"Connection error on {port}: {e}")
+            return False
+
+    def disconnect(self):
+        """Closes the active serial port connection."""
+        try:
+            if self.ser and self.ser.is_open:
+                self.ser.close()
+            self.ser = None
+            return True
+        except Exception as e:
+            print(f"Disconnection error: {e}")
             return False
 
     def write_data(self, data):
-        if self.serial_port and self.serial_port.is_open:
-            self.serial_port.write(data.encode('utf-8'))
-            return True
+        """Writes string commands to the open serial port."""
+        try:
+            if self.ser and self.ser.is_open:
+                self.ser.write(data.encode('utf-8'))
+                return True
+        except Exception as e:
+            print(f"Write error: {e}")
         return False
 
     def read_data(self):
-        if self.serial_port and self.serial_port.is_open:
-            if self.serial_port.in_waiting > 0:
-                return self.serial_port.readline().decode('utf-8', errors='ignore').strip()
+        """Reads incoming response lines from the serial port buffer."""
+        try:
+            if self.ser and self.ser.is_open:
+                line = self.ser.readline()
+                if line:
+                    return line.decode('utf-8', errors='ignore').strip()
+        except Exception as e:
+            pass
         return ""
 
-    def disconnect(self):
-        if self.serial_port and self.serial_port.is_open:
-            self.serial_port.close()
-        return True
-
 if __name__ == '__main__':
-    api = Api()
-    html_path = os.path.abspath('Locker Tesster V3.html')
-    
-    # Create native window wrapping your HTML UI
+    api = SerialAPI()
+    # Bind the python API class to the pywebview window so JS can call window.pywebview.api
     window = webview.create_window(
         'Signifi Kiosk Latch Tester', 
-        f'file://{html_path}', 
+        'index.html', 
         js_api=api,
-        width=1200, 
-        height=800
+        width=1280, 
+        height=800,
+        resizable=True
     )
-    webview.start()
+    webview.start(debug=True)
