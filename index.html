@@ -395,7 +395,7 @@
                 testFb: `u${i}_ok` 
             };
             
-            // Pre-configured CAN Commands exact match from image
+            // Pre-configured CAN Commands exact match
             defaultConfig.can.latches[i] = { 
                 scanCmd: `t01f251${hexId}`, 
                 openFb: `t01f3736f${hexId}`, 
@@ -509,13 +509,14 @@
                     document.getElementById('btn-disconnect').classList.remove('hidden');
                     
                     log("System", `Serial port connected via Web Serial at ${baud} baud.`);
+                    updateTestButtonState();
                     return;
                 } catch (error) {
                     console.warn("Web Serial failed or cancelled, prompting WebSocket fallback...", error);
                 }
             }
 
-            // Fallback for old Android Chrome / non-supporting browsers using a WebSocket bridge (updated IP)
+            // Fallback for old Android Chrome / non-supporting browsers using a WebSocket bridge
             let bridgeURL = prompt("Web Serial not supported on this browser/tablet.\nEnter WebSocket Serial Bridge URL:", "ws://192.168.51.47:8080");
             if (!bridgeURL) return;
 
@@ -527,6 +528,7 @@
                     document.getElementById('btn-connect').classList.add('hidden');
                     document.getElementById('btn-disconnect').classList.remove('hidden');
                     log("System", `Connected to WebSocket Serial Bridge at ${bridgeURL}`);
+                    updateTestButtonState(); // Fix: Update buttons state on WS connect!
                 };
                 socketConnection.onmessage = (event) => {
                     const value = event.data;
@@ -603,7 +605,6 @@
             return null;
         }
 
-        // Helper to strip dynamic trailing timestamp (8 digits/hex characters) from CAN responses
         function cleanPayload(line) {
             if (!line) return '';
             let cleaned = line.trim();
@@ -1199,7 +1200,6 @@
             container.innerHTML = html;
         }
 
-        // Manual override helper: clicking a slot box toggles it into scanned-open state so testing can be unlocked immediately
         function toggleSlotManual(i) {
             const index = scannedOpenLatches.indexOf(i);
             if (index > -1) {
