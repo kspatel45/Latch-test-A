@@ -364,7 +364,6 @@
         let port;
         let writer;
         let reader; 
-        let socketConnection = null; // Fallback for old Android Chrome via WebSocket/TCP Serial Bridge
         let isRunning = false;
         let stopSignal = false;
         let currentMode = 'CAN';
@@ -372,6 +371,13 @@
         let activeAdminTab = 1;
         let latchStatus = Array(16).fill('Unknown'); 
         let scannedOpenLatches = []; 
+        let isPythonBackend = false;
+
+        // PyWebView Ready Check
+        window.addEventListener('pywebviewready', function() {
+            isPythonBackend = true;
+            console.log("PyWebView Python Backend detected.");
+        });
 
         // Initial default configuration with exact CAN frame formats: t01f...
         const defaultConfig = {
@@ -384,9 +390,7 @@
         };
         
         for (let i = 1; i <= 16; i++) {
-            const hexId = i.toString(16).padStart(2, '0'); // 01, 02, ..., 09, 0a, 0b, 0c, 0d, 0e, 0f, 10
-            
-            // USB Defaults
+            const hexId = i.toString(16).padStart(2, '0');
             defaultConfig.usb.latches[i] = { 
                 scanCmd: `u_scan${i}`, 
                 openFb: `u${i}_open`, 
@@ -394,8 +398,6 @@
                 testCmd: `u_test${i}`, 
                 testFb: `u${i}_ok` 
             };
-            
-            // Pre-configured CAN Commands exact match
             defaultConfig.can.latches[i] = { 
                 scanCmd: `t01f251${hexId}`, 
                 openFb: `t01f3736f${hexId}`, 
@@ -416,6 +418,13 @@
             updateConfigSummary();
             updateScanStatusMsg(); 
             switchMode('CAN');
+            
+            setTimeout(() => {
+                if (!navigator.serial && !window.pywebview) {
+                    showNotification("Error: Web Serial API not supported in this browser.", "error");
+                }
+            }, 500);
+
             updateTestButtonState();
         });
 
@@ -455,7 +464,6 @@
 
         function switchAdminTab(mode) {
             currentAdminMode = mode;
-            
             const btnUsb = document.getElementById('admin-tab-usb');
             const btnCan = document.getElementById('admin-tab-can');
 
@@ -470,7 +478,6 @@
                 btnUsb.classList.remove('border-green-500', 'text-green-600');
                 btnUsb.classList.add('border-transparent', 'text-gray-500');
             }
-            
             renderAdminInputs();
             switchTab(activeAdminTab);
         }
@@ -492,69 +499,60 @@
         async function connectSerial() {
             const baud = parseInt(config.baudRate) || 115200;
 
-            // Check if native Web Serial API is supported
-            if (navigator.serial) {
+            if (window.pywebview) {
                 try {
-                    port = await navigator.serial.requestPort();
-                    await port.open({ baudRate: baud });
-                    
-                    const textEncoder = new TextEncoderStream();
-                    textEncoder.readable.pipeTo(port.writable);
-                    writer = textEncoder.writable.getWriter();
-                    readSerialLoop();
-
-                    document.getElementById('connection-status').textContent = `Connected (Web Serial - ${baud} baud)`;
-                    document.getElementById('connection-status').classList.add('text-green-600', 'font-bold');
-                    document.getElementById('btn-connect').classList.add('hidden');
-                    document.getElementById('btn-disconnect').classList.remove('hidden');
-                    
-                    log("System", `Serial port connected via Web Serial at ${baud} baud.`);
-                    updateTestButtonState();
-                    return;
-                } catch (error) {
-                    console.warn("Web Serial failed or cancelled, prompting WebSocket fallback...", error);
+                    let ports = await window.pywebview.api.get_ports();
+                    if (ports.length > 0) {
+                        let success = await window.pywebview.api.connect(ports[0], baud);
+                        if (success) {
+                            isPythonBackend = true;
+                            document.getElementById('connection-status').textContent = `Connected (Python: ${ports[0]} @ ${baud})`;
+                            document.getElementById('connection-status').classList.add('text-green-600', 'font-bold');
+                            document.getElementById('btn-connect').classList.add('hidden');
+                            document.getElementById('btn-disconnect').classList.remove('hidden');
+                            log("System", `Python serial connected to ${ports[0]} at ${baud} baud.`);
+                            startPythonPolling();
+                            return;
+                        }
+                    }
+                    showNotification("No COM ports available via Python wrapper.", "error");
+                } catch (err) {
+                    console.error(err);
+                    showNotification("Python connection error.", "error");
                 }
+                return;
             }
 
-            // Fallback for old Android Chrome / non-supporting browsers using a WebSocket bridge
-            let bridgeURL = prompt("Web Serial not supported on this browser/tablet.\nEnter WebSocket Serial Bridge URL:", "ws://192.168.51.47:8080");
-            if (!bridgeURL) return;
-
+            // Standard Web Serial fallback for regular browser use
             try {
-                socketConnection = new WebSocket(bridgeURL);
-                socketConnection.onopen = () => {
-                    document.getElementById('connection-status').textContent = `Connected (Bridge: ${bridgeURL})`;
-                    document.getElementById('connection-status').classList.add('text-green-600', 'font-bold');
-                    document.getElementById('btn-connect').classList.add('hidden');
-                    document.getElementById('btn-disconnect').classList.remove('hidden');
-                    log("System", `Connected to WebSocket Serial Bridge at ${bridgeURL}`);
-                    updateTestButtonState(); // Fix: Update buttons state on WS connect!
-                };
-                socketConnection.onmessage = (event) => {
-                    const value = event.data;
-                    if (value) {
-                        serialBuffer += value;
-                        document.dispatchEvent(receivedDataEvent);
-                        log("Received", value.trim());
-                    }
-                };
-                socketConnection.onerror = (err) => {
-                    showNotification("WebSocket Bridge connection error.", "error");
-                    log("Error", "WebSocket connection failed.");
-                };
-                socketConnection.onclose = () => {
-                    disconnectSerial();
-                };
-            } catch (e) {
-                showNotification("Failed to connect via WebSocket bridge.", "error");
+                port = await navigator.serial.requestPort();
+                await port.open({ baudRate: baud });
+                
+                const textEncoder = new TextEncoderStream();
+                textEncoder.readable.pipeTo(port.writable);
+                writer = textEncoder.writable.getWriter();
+                readSerialLoop();
+
+                document.getElementById('connection-status').textContent = `Connected (${baud} baud)`;
+                document.getElementById('connection-status').classList.add('text-green-600', 'font-bold');
+                document.getElementById('btn-connect').classList.add('hidden');
+                document.getElementById('btn-disconnect').classList.remove('hidden');
+                log("System", `Serial port connected at ${baud} baud.`);
+            } catch (error) {
+                console.error(error);
+                showNotification("Failed to connect to COM port.", "error");
             }
         }
 
         async function disconnectSerial() {
-            if (reader) await reader.cancel();
-            if (writer) { writer.releaseLock(); writer = null; }
-            if (port) { await port.close(); port = null; }
-            if (socketConnection) { socketConnection.close(); socketConnection = null; }
+            if (window.pywebview && isPythonBackend) {
+                await window.pywebview.api.disconnect();
+                isPythonBackend = false;
+            } else {
+                if (reader) await reader.cancel();
+                if (writer) { writer.releaseLock(); writer = null; }
+                if (port) { await port.close(); port = null; }
+            }
             
             document.getElementById('connection-status').textContent = "Not connected";
             document.getElementById('connection-status').classList.remove('text-green-600', 'font-bold');
@@ -567,10 +565,24 @@
         let serialBuffer = ''; 
         const receivedDataEvent = new Event('serialdatareceived');
 
+        function startPythonPolling() {
+            setInterval(async () => {
+                if (!isPythonBackend) return;
+                try {
+                    let data = await window.pywebview.api.read_data();
+                    if (data && data.length > 0) {
+                        serialBuffer += data + "\n";
+                        document.dispatchEvent(receivedDataEvent);
+                        log("Received", data.trim());
+                    }
+                } catch(e) {}
+            }, 100);
+        }
+
         async function readSerialLoop() {
             if (!port) return;
             const textDecoder = new TextDecoderStream();
-            const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
+            port.readable.pipeTo(textDecoder.writable);
             reader = textDecoder.readable.getReader();
             try {
                 while (true) {
@@ -616,28 +628,31 @@
 
         async function sendCommand(cmd) {
             let terminator = config.lineEnding === "\\r\\n" ? "\r\n" : (config.lineEnding === "\\r" ? "\r" : (config.lineEnding === "\\n" ? "\n" : ""));
-            
-            // Send via WebSocket Bridge if active
-            if (socketConnection && socketConnection.readyState === WebSocket.OPEN) {
-                socketConnection.send(cmd + terminator);
-                log("Sent", cmd);
-                return true;
-            }
+            let fullCmd = cmd + terminator;
 
-            // Send via Web Serial if active
-            if (port && writer) {
-                try {
-                    await writer.write(cmd + terminator);
+            if (window.pywebview && isPythonBackend) {
+                let success = await window.pywebview.api.write_data(fullCmd);
+                if (success) {
                     log("Sent", cmd);
                     return true;
-                } catch (err) {
-                    log("Error", "Failed to send.");
+                } else {
+                    log("Error", "Python failed to send.");
                     return false;
                 }
             }
 
-            log("Error", "No COM port or bridge connected.");
-            return false;
+            if (!port || !writer) {
+                log("Error", "No COM port connected.");
+                return false;
+            }
+            try {
+                await writer.write(fullCmd);
+                log("Sent", cmd);
+                return true;
+            } catch (err) {
+                log("Error", "Failed to send.");
+                return false;
+            }
         }
 
         const sleep = (ms) => new Promise(r => setTimeout(r, ms));
@@ -667,7 +682,7 @@
         }
         
         function updateTestButtonState() {
-            const isConnected = (port && writer) || (socketConnection && socketConnection.readyState === WebSocket.OPEN);
+            let isConnected = (port !== undefined && port !== null) || (window.pywebview && isPythonBackend);
             document.getElementById('btn-run-test').disabled = !(scannedOpenLatches.length > 0 && isConnected && !isRunning);
         }
 
@@ -684,7 +699,7 @@
         }
 
         async function runCalibration() {
-            const isConnected = (port && writer) || (socketConnection && socketConnection.readyState === WebSocket.OPEN);
+            let isConnected = (port !== undefined && port !== null) || (window.pywebview && isPythonBackend);
             if (!isConnected) { showNotification("Connect COM port first.", "error"); return; }
             const cmd = config.calibrationCmd;
             if(!cmd) { showNotification("No calibration command configured.", "error"); return; }
@@ -701,7 +716,7 @@
                 document.getElementById('tester-name').focus();
                 return;
             }
-            const isConnected = (port && writer) || (socketConnection && socketConnection.readyState === WebSocket.OPEN);
+            let isConnected = (port !== undefined && port !== null) || (window.pywebview && isPythonBackend);
             if (!isConnected) { showNotification("Connect COM port first.", "error"); return; }
             if (isRunning) return;
 
@@ -724,10 +739,7 @@
                     const openFb = latchConfig.openFb ? latchConfig.openFb.trim().toLowerCase() : '';
                     const closeFb = latchConfig.closeFb ? latchConfig.closeFb.trim().toLowerCase() : '';
 
-                    if (!scanCmd) {
-                        log("Warn", `Slot ${i}: No scan cmd. Skipping.`);
-                        continue;
-                    }
+                    if (!scanCmd) continue;
 
                     setSlotState(i, 'Loading');
                     const commandSent = await sendCommand(scanCmd);
@@ -788,7 +800,7 @@
             const testerName = document.getElementById('tester-name').value;
             if (!testerName.trim()) { showNotification("Enter Tester Name.", "error"); return; }
             if (scannedOpenLatches.length === 0) { showNotification("No OPEN latches to test.", "error"); return; }
-            const isConnected = (port && writer) || (socketConnection && socketConnection.readyState === WebSocket.OPEN);
+            let isConnected = (port !== undefined && port !== null) || (window.pywebview && isPythonBackend);
             if (!isConnected) return;
             if (isRunning) return;
 
@@ -802,7 +814,7 @@
 
             document.getElementById('control-overlay').classList.remove('hidden');
             document.getElementById('main-buttons').classList.add('opacity-50', 'pointer-events-none');
-            document.getElementById('timer-display').classList.remove('hidden');
+            document.getElementById('timer-display').classList.add('hidden');
 
             log("System", `--- Starting ${currentMode} Test ---`);
 
@@ -817,10 +829,7 @@
                     const scanCmd = latchConfig.scanCmd ? latchConfig.scanCmd.trim() : '';
                     const passFb = latchConfig.testFb ? latchConfig.testFb.trim().toLowerCase() : '';
 
-                    if (!openCmd) {
-                        testResults.push({ slot: i, status: 'SKIPPED', passed: true });
-                        continue;
-                    }
+                    if (!openCmd) continue;
                     
                     log("Info", `Slot ${i}: Test cmd '${openCmd}'`);
                     setSlotState(i, 'Loading');
@@ -829,7 +838,6 @@
                     }
 
                     await sleep(100);
-
                     if (scanCmd) await sendCommand(scanCmd);
 
                     const result = await new Promise((resolve) => {
@@ -880,13 +888,12 @@
                 isRunning = false;
                 document.getElementById('control-overlay').classList.add('hidden');
                 document.getElementById('main-buttons').classList.remove('opacity-50', 'pointer-events-none');
-                document.getElementById('timer-display').classList.add('hidden');
                 updateTestButtonState();
             }
         }
 
         async function adminTestScan(i) {
-            const isConnected = (port && writer) || (socketConnection && socketConnection.readyState === WebSocket.OPEN);
+            let isConnected = (port !== undefined && port !== null) || (window.pywebview && isPythonBackend);
             if (!isConnected) { showNotification("Connect COM port first on Dashboard.", "error"); return; }
             const scanCmd = document.getElementById(`latch-config-${i}-scanCmd`).value.trim();
             const openFb = document.getElementById(`latch-config-${i}-openFb`).value.trim().toLowerCase();
@@ -920,14 +927,6 @@
                             resolve('CLOSED'); return;
                         }
                     }
-                    if (openFb && bufferLower.includes(openFb)) {
-                        clearTimeout(timeout); document.removeEventListener('serialdatareceived', listener);
-                        resolve('OPEN'); return;
-                    }
-                    if (closeFb && bufferLower.includes(closeFb)) {
-                        clearTimeout(timeout); document.removeEventListener('serialdatareceived', listener);
-                        resolve('CLOSED'); return;
-                    }
                 };
                 document.addEventListener('serialdatareceived', listener);
             });
@@ -945,7 +944,7 @@
         }
 
         async function adminTestCmd(i) {
-            const isConnected = (port && writer) || (socketConnection && socketConnection.readyState === WebSocket.OPEN);
+            let isConnected = (port !== undefined && port !== null) || (window.pywebview && isPythonBackend);
             if (!isConnected) { showNotification("Connect COM port first on Dashboard.", "error"); return; }
             const testCmd = document.getElementById(`latch-config-${i}-testCmd`).value.trim();
             const testFb = document.getElementById(`latch-config-${i}-testFb`).value.trim().toLowerCase();
@@ -974,10 +973,6 @@
                             resolve('PASS'); return;
                         }
                     }
-                    if (testFb && bufferLower.includes(testFb)) {
-                        clearTimeout(timeout); document.removeEventListener('serialdatareceived', listener);
-                        resolve('PASS'); return;
-                    }
                 };
                 document.addEventListener('serialdatareceived', listener);
             });
@@ -993,7 +988,6 @@
 
         function printSticker(testerName, totalTested, overallPass) {
             if (!overallPass) return;
-
             const now = new Date();
             const dateStr = now.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' });
             const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -1049,7 +1043,6 @@
             config.baudRate = document.getElementById('config-baud').value;
             config.calibrationCmd = document.getElementById('config-calib-cmd').value;
             config.lineEnding = document.getElementById('config-line-ending').value;
-            
             updateConfigFromInputs(currentAdminMode);
 
             localStorage.setItem('signifi_latch_config_v5', JSON.stringify(config));
@@ -1118,17 +1111,14 @@
         function renderAdminInputs() {
             const container = document.getElementById('latch-configs');
             container.innerHTML = ''; 
-            
             const targetConfig = currentAdminMode === 'USB' ? config.usb.latches : config.can.latches;
 
             for (let i = 1; i <= 16; i++) {
                 const current = targetConfig[i] || {};
-                
                 let inputsHtml = `
                     <div id="content-tab-${i}" class="${i === activeAdminTab ? '' : 'hidden'} p-4 bg-gray-50 border border-gray-200 rounded-lg">
                         <h3 class="text-lg font-bold mb-4 text-gray-800">${currentAdminMode} Latch ${i} Configuration</h3>
                         
-                        <!-- Scan Settings -->
                         <div class="mb-5 p-4 bg-blue-50/60 rounded-xl border border-blue-100">
                             <div class="flex justify-between items-center mb-3">
                                 <p class="font-semibold text-blue-800 text-sm">Scan Configuration</p>
@@ -1154,7 +1144,6 @@
                             </div>
                         </div>
 
-                        <!-- Test Settings -->
                         <div class="p-4 bg-indigo-50/60 rounded-xl border border-indigo-100">
                             <div class="flex justify-between items-center mb-3">
                                 <p class="font-semibold text-indigo-800 text-sm">Test (Open) Configuration</p>
