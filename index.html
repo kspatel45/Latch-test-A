@@ -515,8 +515,8 @@
                 }
             }
 
-            // Fallback for old Android Chrome / non-supporting browsers using a WebSocket bridge (e.g. ws://localhost:8080)
-            let bridgeURL = prompt("Web Serial not supported on this browser/tablet.\nEnter WebSocket Serial Bridge URL (e.g., ws://192.168.1.50:8080):", "ws://localhost:8080");
+            // Fallback for old Android Chrome / non-supporting browsers using a WebSocket bridge (updated IP)
+            let bridgeURL = prompt("Web Serial not supported on this browser/tablet.\nEnter WebSocket Serial Bridge URL:", "ws://192.168.51.47:8080");
             if (!bridgeURL) return;
 
             try {
