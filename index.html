@@ -497,9 +497,17 @@
             try {
                 const baud = parseInt(config.baudRate) || 115200;
                 
-                // Android / Browser compatibility check: Use Web Serial if available, fallback to WebUSB
+                // Android / Browser compatibility check with robust error handling for port detection
                 if (navigator.serial) {
-                    port = await navigator.serial.requestPort();
+                    try {
+                        port = await navigator.serial.requestPort();
+                    } catch (err) {
+                        if (err.name === 'NotFoundError') {
+                            showNotification("No compatible COM port selected or connected. Please check your USB device connection.", "error");
+                            return;
+                        }
+                        throw err;
+                    }
                     await port.open({ baudRate: baud });
                     
                     const textEncoder = new TextEncoderStream();
@@ -507,8 +515,16 @@
                     writer = textEncoder.writable.getWriter();
                     readSerialLoop();
                 } else if (navigator.usb) {
-                    // Fallback for Android Chrome using WebUSB (CDC-ACM / Generic USB Serial)
-                    usbDevice = await navigator.usb.requestDevice({ filters: [] });
+                    // Fallback for browser environments using WebUSB
+                    try {
+                        usbDevice = await navigator.usb.requestDevice({ filters: [] });
+                    } catch (err) {
+                        if (err.name === 'NotFoundError') {
+                            showNotification("No compatible USB device selected. Please connect your device.", "error");
+                            return;
+                        }
+                        throw err;
+                    }
                     await usbDevice.open();
                     if (usbDevice.configuration === null) {
                         await usbDevice.selectConfiguration(1);
@@ -519,7 +535,6 @@
                         write: async (data) => {
                             const encoder = new TextEncoder();
                             const bytes = encoder.encode(data);
-                            // Standard bulk out endpoint transfer (typically endpoint 1 or 2)
                             await usbDevice.transferOut(2, bytes);
                         },
                         releaseLock: () => {}
@@ -585,7 +600,6 @@
             const decoder = new TextDecoder();
             try {
                 while (usbDevice && usbDevice.opened) {
-                    // Bulk in endpoint transfer (typically endpoint 1 or 2)
                     const result = await usbDevice.transferIn(1, 64);
                     if (result && result.data) {
                         const value = decoder.decode(result.data);
