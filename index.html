@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Signifi Kiosk Latch Tester (Android Compatible)</title>
+    <title>Signifi Kiosk Latch Tester (Old Android Compatible)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -24,7 +24,6 @@
         .mode-tab-active { background-color: #10b981; color: white; border-color: #059669; }
         .mode-tab-inactive { background-color: white; color: #374151; border-color: #d1d5db; }
 
-        /* Custom Styles for 16 Slots */
         .slot {
             height: 60px;
             display: flex;
@@ -39,9 +38,7 @@
             border: 1px solid #d1d5db;
             cursor: pointer;
         }
-        .slot:hover {
-            border-color: #10b981;
-        }
+        .slot:hover { border-color: #10b981; }
 
         .slot-green {
             background-color: #d1fae5;
@@ -80,79 +77,19 @@
         }
 
         @media print {
-            body * {
-                visibility: hidden;
-                height: 0;
-                overflow: hidden;
-            }
-            #print-area, #print-area * {
-                visibility: visible;
-                height: auto;
-                overflow: visible;
-            }
+            body * { visibility: hidden; height: 0; overflow: hidden; }
+            #print-area, #print-area * { visibility: visible; height: auto; overflow: visible; }
             #print-area {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 56mm; 
-                height: auto; 
-                padding: 3mm;
-                background: white;
-                color: black;
-                display: flex !important;
-                align-items: flex-start;
-                justify-content: space-between;
-                box-sizing: border-box;
-                overflow: hidden;
+                position: absolute; left: 0; top: 0; width: 56mm; height: auto; padding: 3mm;
+                background: white; color: black; display: flex !important;
+                align-items: flex-start; justify-content: space-between; box-sizing: border-box; overflow: hidden;
             }
-            
-            .print-text-col {
-                flex: 1;
-                font-family: sans-serif;
-                padding-right: 2px;
-                display: flex;
-                flex-direction: column;
-                min-width: 0; 
-                word-wrap: break-word;
-                overflow-wrap: break-word;
-            }
-            
-            .print-header {
-                font-weight: 900;
-                font-size: 9pt;
-                text-transform: uppercase;
-                margin-bottom: 1px;
-                line-height: 1.1;
-                white-space: normal;
-            }
-
-            .print-detail {
-                font-size: 6pt; 
-                margin-bottom: 0px;
-                line-height: 1.1;
-                white-space: normal;
-            }
-
-            #qrcode {
-                width: 14mm;
-                height: 14mm;
-                flex-shrink: 0;
-                display: flex;
-                justify-content: center;
-                align-items: flex-start;
-                margin-left: 1mm;
-                margin-top: 2mm;
-            }
-            
-            #qrcode img {
-                width: 100%;
-                height: auto;
-            }
-
-            @page {
-                size: 56mm auto;
-                margin: 0mm; 
-            }
+            .print-text-col { flex: 1; font-family: sans-serif; padding-right: 2px; display: flex; flex-direction: column; min-width: 0; word-wrap: break-word; }
+            .print-header { font-weight: 900; font-size: 9pt; text-transform: uppercase; margin-bottom: 1px; line-height: 1.1; }
+            .print-detail { font-size: 6pt; margin-bottom: 0px; line-height: 1.1; }
+            #qrcode { width: 14mm; height: 14mm; flex-shrink: 0; display: flex; justify-content: center; align-items: flex-start; margin-left: 1mm; margin-top: 2mm; }
+            #qrcode img { width: 100%; height: auto; }
+            @page { size: 56mm auto; margin: 0mm; }
         }
     </style>
 </head>
@@ -205,10 +142,10 @@
                         <p id="config-summary" class="text-xs text-gray-400 mt-1">Loading config...</p>
                     </div>
                     <div class="flex gap-2">
-                        <button id="btn-connect" onclick="connectSerial()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-xl shadow-lg transition flex items-center">
-                            <i class="fa-brands fa-usb mr-2"></i> Select COM Port / USB Device
+                        <button id="btn-connect" onclick="connectDevice()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-xl shadow-lg transition flex items-center">
+                            <i class="fa-brands fa-usb mr-2"></i> Connect USB / Serial Device
                         </button>
-                        <button id="btn-disconnect" onclick="disconnectSerial()" class="hidden bg-red-100 hover:bg-red-200 text-red-700 px-6 py-2 rounded-xl shadow transition border border-red-300">
+                        <button id="btn-disconnect" onclick="disconnectDevice()" class="hidden bg-red-100 hover:bg-red-200 text-red-700 px-6 py-2 rounded-xl shadow transition border border-red-300">
                             Disconnect
                         </button>
                     </div>
@@ -238,13 +175,10 @@
 
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-xl font-bold text-gray-800"><span id="mode-title">CAN</span> Latch Status</h2>
-                        <div id="timer-display" class="text-xl font-mono font-bold text-green-600 hidden">
-                            Test: <span id="time-remaining">00</span>s
-                        </div>
                     </div>
                     
                     <div id="scan-status-msg" class="text-sm p-3 bg-gray-100 text-gray-600 rounded-lg mb-4 hidden">
-                        <i class="fa-solid fa-info-circle mr-1"></i> Press Scan to determine which latches are OPEN and ready for testing. (Tip: Click any slot box to manually toggle it ready for testing).
+                        <i class="fa-solid fa-info-circle mr-1"></i> Press Scan to determine which latches are OPEN and ready for testing.
                     </div>
 
                     <div id="slot-grid" class="grid grid-cols-4 md:grid-cols-8 gap-3 mb-6"></div>
@@ -357,13 +291,13 @@
     </main>
 
     <footer class="bg-white border-t py-4 text-center">
-        <p class="text-gray-400 text-xs">Signifi Kiosk Latch Tester (Android Compatible)</p>
+        <p class="text-gray-400 text-xs">Signifi Kiosk Latch Tester (Old Android Compatible)</p>
     </footer>
 
     <script>
-        let port;
-        let writer;
-        let reader; 
+        let port = null;
+        let writer = null;
+        let reader = null; 
         let usbDevice = null;
         let isRunning = false;
         let stopSignal = false;
@@ -373,7 +307,6 @@
         let latchStatus = Array(16).fill('Unknown'); 
         let scannedOpenLatches = []; 
 
-        // Initial default configuration with exact CAN frame formats: t01f...
         const defaultConfig = {
             duration: 60,
             baudRate: 115200,
@@ -385,23 +318,11 @@
         
         for (let i = 1; i <= 16; i++) {
             const hexId = i.toString(16).padStart(2, '0'); 
-            
-            // USB Defaults
             defaultConfig.usb.latches[i] = { 
-                scanCmd: `u_scan${i}`, 
-                openFb: `u${i}_open`, 
-                closeFb: `u${i}_close`, 
-                testCmd: `u_test${i}`, 
-                testFb: `u${i}_ok` 
+                scanCmd: `u_scan${i}`, openFb: `u${i}_open`, closeFb: `u${i}_close`, testCmd: `u_test${i}`, testFb: `u${i}_ok` 
             };
-            
-            // CAN Defaults
             defaultConfig.can.latches[i] = { 
-                scanCmd: `t01f251${hexId}`, 
-                openFb: `t01f3736f${hexId}`, 
-                closeFb: `t01f37363${hexId}`, 
-                testCmd: `t01f24f${hexId}`, 
-                testFb: `t01f3736f${hexId}` 
+                scanCmd: `t01f251${hexId}`, openFb: `t01f3736f${hexId}`, closeFb: `t01f37363${hexId}`, testCmd: `t01f24f${hexId}`, testFb: `t01f3736f${hexId}` 
             };
         }
 
@@ -416,10 +337,6 @@
             updateConfigSummary();
             updateScanStatusMsg(); 
             switchMode('CAN');
-            
-            if (!navigator.serial && !navigator.usb) {
-                showNotification("Warning: Web Serial / WebUSB API not supported on this browser/device.", "error");
-            }
             updateTestButtonState();
         });
 
@@ -427,7 +344,6 @@
             document.getElementById('page-home').classList.add('hidden');
             document.getElementById('page-admin').classList.add('hidden');
             document.getElementById(`page-${page}`).classList.remove('hidden');
-
             if (page === 'home') {
                 document.getElementById('admin-login').classList.add('hidden');
                 document.getElementById('admin-panel').classList.add('hidden');
@@ -437,29 +353,22 @@
         function switchMode(mode) {
             currentMode = mode;
             document.getElementById('mode-title').innerText = mode;
-            
             const btnUsb = document.getElementById('mode-tab-usb');
             const btnCan = document.getElementById('mode-tab-can');
 
             if(mode === 'USB') {
-                btnUsb.classList.add('mode-tab-active');
-                btnUsb.classList.remove('mode-tab-inactive');
-                btnCan.classList.remove('mode-tab-active');
-                btnCan.classList.add('mode-tab-inactive');
+                btnUsb.classList.add('mode-tab-active'); btnUsb.classList.remove('mode-tab-inactive');
+                btnCan.classList.remove('mode-tab-active'); btnCan.classList.add('mode-tab-inactive');
             } else {
-                btnCan.classList.add('mode-tab-active');
-                btnCan.classList.remove('mode-tab-inactive');
-                btnUsb.classList.remove('mode-tab-active');
-                btnUsb.classList.add('mode-tab-inactive');
+                btnCan.classList.add('mode-tab-active'); btnCan.classList.remove('mode-tab-inactive');
+                btnUsb.classList.remove('mode-tab-active'); btnUsb.classList.add('mode-tab-inactive');
             }
-            
             resetAllSlotStates();
             log("System", `Switched to ${mode} Mode.`);
         }
 
         function switchAdminTab(mode) {
             currentAdminMode = mode;
-            
             const btnUsb = document.getElementById('admin-tab-usb');
             const btnCan = document.getElementById('admin-tab-can');
 
@@ -474,15 +383,13 @@
                 btnUsb.classList.remove('border-green-500', 'text-green-600');
                 btnUsb.classList.add('border-transparent', 'text-gray-500');
             }
-            
             renderAdminInputs();
             switchTab(activeAdminTab);
         }
 
         function showNotification(msg, type) {
             const notif = document.getElementById('notification');
-            notif.classList.remove('hidden', 'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800', 'bg-blue-100', 'text-blue-800');
-            
+            notif.classList.remove('hidden', 'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800', 'bg-blue-100', 'text-blue-800', 'bg-yellow-100', 'text-yellow-800');
             if(type === 'success') notif.classList.add('bg-green-100', 'text-green-800');
             else if(type === 'error') notif.classList.add('bg-red-100', 'text-red-800');
             else if(type === 'info') notif.classList.add('bg-blue-100', 'text-blue-800');
@@ -493,38 +400,36 @@
             setTimeout(() => notif.classList.add('hidden'), 5000);
         }
 
-        async function connectSerial() {
-            try {
-                const baud = parseInt(config.baudRate) || 115200;
-                
-                // Android / Browser compatibility check with robust error handling for port detection
-                if (navigator.serial) {
-                    try {
-                        port = await navigator.serial.requestPort();
-                    } catch (err) {
-                        if (err.name === 'NotFoundError') {
-                            showNotification("No compatible COM port selected or connected. Please check your USB device connection.", "error");
-                            return;
-                        }
-                        throw err;
-                    }
+        // Universal Connection Logic for Older Android (Web Serial first, with full WebUSB fallback layer)
+        async function connectDevice() {
+            const baud = parseInt(config.baudRate) || 115200;
+            
+            // Try standard Web Serial API if available
+            if (navigator.serial) {
+                try {
+                    port = await navigator.serial.requestPort();
                     await port.open({ baudRate: baud });
                     
                     const textEncoder = new TextEncoderStream();
                     textEncoder.readable.pipeTo(port.writable);
                     writer = textEncoder.writable.getWriter();
                     readSerialLoop();
-                } else if (navigator.usb) {
-                    // Fallback for browser environments using WebUSB
-                    try {
-                        usbDevice = await navigator.usb.requestDevice({ filters: [] });
-                    } catch (err) {
-                        if (err.name === 'NotFoundError') {
-                            showNotification("No compatible USB device selected. Please connect your device.", "error");
-                            return;
-                        }
-                        throw err;
+                    
+                    setConnectedUI(baud);
+                    return;
+                } catch (err) {
+                    if (err.name === 'NotFoundError') {
+                        showNotification("No port selected. Trying WebUSB fallback...", "info");
+                    } else {
+                        console.log("Web Serial error, attempting WebUSB fallback:", err);
                     }
+                }
+            }
+
+            // Fallback for Older Android WebViews / Browsers using WebUSB directly
+            if (navigator.usb) {
+                try {
+                    usbDevice = await navigator.usb.requestDevice({ filters: [] });
                     await usbDevice.open();
                     if (usbDevice.configuration === null) {
                         await usbDevice.selectConfiguration(1);
@@ -535,29 +440,37 @@
                         write: async (data) => {
                             const encoder = new TextEncoder();
                             const bytes = encoder.encode(data);
+                            // Standard bulk output endpoint inference
                             await usbDevice.transferOut(2, bytes);
                         },
                         releaseLock: () => {}
                     };
                     
                     readWebUSBDataLoop();
-                } else {
-                    throw new Error("No Web Serial or WebUSB support available on this browser.");
+                    setConnectedUI(baud + " (WebUSB)");
+                    return;
+                } catch (usbErr) {
+                    if (usbErr.name === 'NotFoundError') {
+                        showNotification("No USB device selected by user.", "error");
+                        return;
+                    }
+                    throw usbErr;
                 }
-
-                document.getElementById('connection-status').textContent = `Connected (${baud} baud)`;
-                document.getElementById('connection-status').classList.add('text-green-600', 'font-bold');
-                document.getElementById('btn-connect').classList.add('hidden');
-                document.getElementById('btn-disconnect').classList.remove('hidden');
-                
-                log("System", `Port connected successfully at ${baud} baud.`);
-            } catch (error) {
-                console.error(error);
-                showNotification("Failed to connect to device/COM port: " + error.message, "error");
             }
+
+            showNotification("Web Serial and WebUSB are not supported on this browser version. Please use an updated Chrome browser on Android.", "error");
         }
 
-        async function disconnectSerial() {
+        function setConnectedUI(statusText) {
+            document.getElementById('connection-status').textContent = `Connected (${statusText})`;
+            document.getElementById('connection-status').classList.add('text-green-600', 'font-bold');
+            document.getElementById('btn-connect').classList.add('hidden');
+            document.getElementById('btn-disconnect').classList.remove('hidden');
+            log("System", `Device connected successfully.`);
+            updateTestButtonState();
+        }
+
+        async function disconnectDevice() {
             try {
                 if (reader) await reader.cancel();
                 if (writer && writer.releaseLock) { writer.releaseLock(); writer = null; }
@@ -569,7 +482,7 @@
             document.getElementById('connection-status').classList.remove('text-green-600', 'font-bold');
             document.getElementById('btn-connect').classList.remove('hidden');
             document.getElementById('btn-disconnect').classList.add('hidden');
-            log("System", "Port disconnected.");
+            log("System", "Device disconnected.");
             updateTestButtonState();
         }
 
@@ -579,7 +492,7 @@
         async function readSerialLoop() {
             if (!port) return;
             const textDecoder = new TextDecoderStream();
-            const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
+            port.readable.pipeTo(textDecoder.writable);
             reader = textDecoder.readable.getReader();
             try {
                 while (true) {
@@ -592,7 +505,7 @@
                     }
                 }
             } catch (error) { /* Ignore */ } 
-            finally { disconnectSerial(); }
+            finally { disconnectDevice(); }
         }
 
         async function readWebUSBDataLoop() {
@@ -611,7 +524,7 @@
                     }
                     await sleep(50);
                 }
-            } catch (error) { /* Ignore disconnects */ }
+            } catch (error) { /* Ignore */ }
         }
         
         function getNextSerialLine() {
@@ -644,7 +557,7 @@
 
         async function sendCommand(cmd) {
             if ((!port && !usbDevice) || !writer) {
-                log("Error", "No COM port / USB device connected.");
+                log("Error", "No active connection to device.");
                 return false;
             }
             try {
@@ -701,10 +614,9 @@
         }
 
         async function runCalibration() {
-            if (!port && !usbDevice) { showNotification("Connect COM port / USB first.", "error"); return; }
+            if (!port && !usbDevice) { showNotification("Connect device first.", "error"); return; }
             const cmd = config.calibrationCmd;
             if(!cmd) { showNotification("No calibration command configured.", "error"); return; }
-            
             log("Info", "Running Calibration...");
             await sendCommand(cmd);
             showNotification("Calibration command sent.", "info");
@@ -717,7 +629,7 @@
                 document.getElementById('tester-name').focus();
                 return;
             }
-            if (!port && !usbDevice) { showNotification("Connect COM port / USB first.", "error"); return; }
+            if (!port && !usbDevice) { showNotification("Connect device first.", "error"); return; }
             if (isRunning) return;
 
             isRunning = true;
@@ -739,14 +651,10 @@
                     const openFb = latchConfig.openFb ? latchConfig.openFb.trim().toLowerCase() : '';
                     const closeFb = latchConfig.closeFb ? latchConfig.closeFb.trim().toLowerCase() : '';
 
-                    if (!scanCmd) {
-                        log("Warn", `Slot ${i}: No scan cmd. Skipping.`);
-                        continue;
-                    }
+                    if (!scanCmd) continue;
 
                     setSlotState(i, 'Loading');
-                    const commandSent = await sendCommand(scanCmd);
-                    if (!commandSent) { setSlotState(i, 'Unknown'); continue; }
+                    if(!(await sendCommand(scanCmd))) { setSlotState(i, 'Unknown'); continue; }
 
                     const result = await new Promise((resolve) => {
                         const timeout = setTimeout(() => {
@@ -760,16 +668,12 @@
                             while ((rawLine = getNextSerialLine()) !== null) {
                                 const line = cleanPayload(rawLine).toLowerCase();
                                 if (openFb && (line.includes(openFb) || bufferLower.includes(openFb))) {
-                                    clearTimeout(timeout);
-                                    document.removeEventListener('serialdatareceived', listener);
-                                    resolve({ status: 'Open' });
-                                    return;
+                                    clearTimeout(timeout); document.removeEventListener('serialdatareceived', listener);
+                                    resolve({ status: 'Open' }); return;
                                 }
                                 if (closeFb && (line.includes(closeFb) || bufferLower.includes(closeFb))) {
-                                    clearTimeout(timeout);
-                                    document.removeEventListener('serialdatareceived', listener);
-                                    resolve({ status: 'Close' });
-                                    return;
+                                    clearTimeout(timeout); document.removeEventListener('serialdatareceived', listener);
+                                    resolve({ status: 'Close' }); return;
                                 }
                             }
                         };
@@ -809,14 +713,12 @@
             isRunning = true;
             stopSignal = false;
             
-            let testResults = [];
             let testPassed = true;
             let latchesToTest = scannedOpenLatches.slice();
             const activeConfig = currentMode === 'USB' ? config.usb.latches : config.can.latches;
 
             document.getElementById('control-overlay').classList.remove('hidden');
             document.getElementById('main-buttons').classList.add('opacity-50', 'pointer-events-none');
-            document.getElementById('timer-display').classList.remove('hidden');
 
             log("System", `--- Starting ${currentMode} Test ---`);
 
@@ -831,19 +733,13 @@
                     const scanCmd = latchConfig.scanCmd ? latchConfig.scanCmd.trim() : '';
                     const passFb = latchConfig.testFb ? latchConfig.testFb.trim().toLowerCase() : '';
 
-                    if (!openCmd) {
-                        testResults.push({ slot: i, status: 'SKIPPED', passed: true });
-                        continue;
-                    }
+                    if (!openCmd) continue;
                     
                     log("Info", `Slot ${i}: Test cmd '${openCmd}'`);
                     setSlotState(i, 'Loading');
-                    if(!(await sendCommand(openCmd))) {
-                         setSlotState(i, 'Unknown'); testPassed = false; break;
-                    }
+                    if(!(await sendCommand(openCmd))) { setSlotState(i, 'Unknown'); testPassed = false; break; }
 
                     await sleep(100);
-
                     if (scanCmd) await sendCommand(scanCmd);
 
                     const result = await new Promise((resolve) => {
@@ -858,10 +754,8 @@
                             while ((rawLine = getNextSerialLine()) !== null) {
                                 const line = cleanPayload(rawLine).toLowerCase();
                                 if (passFb && (line.includes(passFb) || bufferLower.includes(passFb))) {
-                                    clearTimeout(timeout);
-                                    document.removeEventListener('serialdatareceived', listener);
-                                    resolve({ status: 'PASS' });
-                                    return;
+                                    clearTimeout(timeout); document.removeEventListener('serialdatareceived', listener);
+                                    resolve({ status: 'PASS' }); return;
                                 }
                             }
                         };
@@ -872,13 +766,11 @@
                     if (!slotPass) {
                         setSlotState(i, 'Close');
                         testPassed = false;
-                        log("Error", `Slot ${i}: FAILED (${result.status})`);
-                        testResults.push({ slot: i, status: 'CLOSE', passed: false });
+                        log("Error", `Slot ${i}: FAILED`);
                         break;
                     } else {
                         setSlotState(i, 'Open', true);
                         log("Success", `Slot ${i}: PASS`);
-                        testResults.push({ slot: i, status: 'PASS', passed: true });
                     }
                 }
 
@@ -888,25 +780,21 @@
                 } else if (!stopSignal) {
                     showNotification("QC Failed.", "error");
                 }
-
             } catch (e) { log("Error", "Test error: " + e.message); } 
             finally {
                 isRunning = false;
                 document.getElementById('control-overlay').classList.add('hidden');
                 document.getElementById('main-buttons').classList.remove('opacity-50', 'pointer-events-none');
-                document.getElementById('timer-display').classList.add('hidden');
                 updateTestButtonState();
             }
         }
 
         async function adminTestScan(i) {
-            if (!port && !usbDevice) { showNotification("Connect port first on Dashboard.", "error"); return; }
+            if (!port && !usbDevice) { showNotification("Connect device first.", "error"); return; }
             const scanCmd = document.getElementById(`latch-config-${i}-scanCmd`).value.trim();
             const openFb = document.getElementById(`latch-config-${i}-openFb`).value.trim().toLowerCase();
             const closeFb = document.getElementById(`latch-config-${i}-closeFb`).value.trim().toLowerCase();
             const statusEl = document.getElementById(`admin-scan-status-${i}`);
-
-            if (!scanCmd) { showNotification("Enter a Scan Command first.", "error"); return; }
 
             statusEl.className = "text-xs px-2 py-1 rounded bg-blue-200 text-blue-800 font-mono animate-pulse";
             statusEl.innerText = "Scanning...";
@@ -933,37 +821,19 @@
                             resolve('CLOSED'); return;
                         }
                     }
-                    if (openFb && bufferLower.includes(openFb)) {
-                        clearTimeout(timeout); document.removeEventListener('serialdatareceived', listener);
-                        resolve('OPEN'); return;
-                    }
-                    if (closeFb && bufferLower.includes(closeFb)) {
-                        clearTimeout(timeout); document.removeEventListener('serialdatareceived', listener);
-                        resolve('CLOSED'); return;
-                    }
                 };
                 document.addEventListener('serialdatareceived', listener);
             });
 
-            if (result === 'OPEN') {
-                statusEl.className = "text-xs px-2 py-1 rounded bg-green-500 text-white font-mono";
-                statusEl.innerText = "Feedback: OPEN";
-            } else if (result === 'CLOSED') {
-                statusEl.className = "text-xs px-2 py-1 rounded bg-red-500 text-white font-mono";
-                statusEl.innerText = "Feedback: CLOSED";
-            } else {
-                statusEl.className = "text-xs px-2 py-1 rounded bg-yellow-500 text-white font-mono";
-                statusEl.innerText = "Feedback: TIMEOUT";
-            }
+            statusEl.className = result === 'OPEN' ? "text-xs px-2 py-1 rounded bg-green-500 text-white font-mono" : "text-xs px-2 py-1 rounded bg-red-500 text-white font-mono";
+            statusEl.innerText = `Feedback: ${result}`;
         }
 
         async function adminTestCmd(i) {
-            if (!port && !usbDevice) { showNotification("Connect port first on Dashboard.", "error"); return; }
+            if (!port && !usbDevice) { showNotification("Connect device first.", "error"); return; }
             const testCmd = document.getElementById(`latch-config-${i}-testCmd`).value.trim();
             const testFb = document.getElementById(`latch-config-${i}-testFb`).value.trim().toLowerCase();
             const statusEl = document.getElementById(`admin-test-status-${i}`);
-
-            if (!testCmd) { showNotification("Enter a Test Command first.", "error"); return; }
 
             statusEl.className = "text-xs px-2 py-1 rounded bg-indigo-200 text-indigo-800 font-mono animate-pulse";
             statusEl.innerText = "Testing...";
@@ -986,26 +856,16 @@
                             resolve('PASS'); return;
                         }
                     }
-                    if (testFb && bufferLower.includes(testFb)) {
-                        clearTimeout(timeout); document.removeEventListener('serialdatareceived', listener);
-                        resolve('PASS'); return;
-                    }
                 };
                 document.addEventListener('serialdatareceived', listener);
             });
 
-            if (result === 'PASS') {
-                statusEl.className = "text-xs px-2 py-1 rounded bg-green-500 text-white font-mono";
-                statusEl.innerText = "Feedback: PASS";
-            } else {
-                statusEl.className = "text-xs px-2 py-1 rounded bg-red-500 text-white font-mono";
-                statusEl.innerText = "Feedback: FAIL/TIMEOUT";
-            }
+            statusEl.className = result === 'PASS' ? "text-xs px-2 py-1 rounded bg-green-500 text-white font-mono" : "text-xs px-2 py-1 rounded bg-red-500 text-white font-mono";
+            statusEl.innerText = `Feedback: ${result}`;
         }
 
         function printSticker(testerName, totalTested, overallPass) {
             if (!overallPass) return;
-
             const now = new Date();
             const dateStr = now.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' });
             const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -1025,19 +885,14 @@
             setTimeout(() => window.print(), 500); 
         }
 
-        function stopOperation() {
-            if (isRunning) { stopSignal = true; log("System", "Operation stopping..."); }
-        }
-
+        function stopOperation() { if (isRunning) { stopSignal = true; log("System", "Stopping..."); } }
         function log(type, msg) {
             const logDiv = document.getElementById('log-output');
             const time = new Date().toLocaleTimeString();
-            const color = type.startsWith('Error') || type.startsWith('FAIL') ? 'text-red-400' : 
-                          (type === 'Sent' ? 'text-blue-300' : 'text-green-400');
+            const color = type.startsWith('Error') || type.startsWith('FAIL') ? 'text-red-400' : (type === 'Sent' ? 'text-blue-300' : 'text-green-400');
             logDiv.innerHTML += `<div class="mb-1"><span class="text-gray-500">[${time}]</span> <span class="${color}">[${type}]</span> ${msg}</div>`;
             logDiv.scrollTop = logDiv.scrollHeight;
         }
-
         function clearLog() { document.getElementById('log-output').innerHTML = ''; }
 
         function checkAdmin() {
@@ -1061,23 +916,17 @@
             config.baudRate = document.getElementById('config-baud').value;
             config.calibrationCmd = document.getElementById('config-calib-cmd').value;
             config.lineEnding = document.getElementById('config-line-ending').value;
-            
             updateConfigFromInputs(currentAdminMode);
-
             localStorage.setItem('signifi_latch_config_v5', JSON.stringify(config));
-            showNotification("Configuration saved successfully!", "success");
+            showNotification("Configuration saved!", "success");
         }
 
         function resetDefaults() {
-            if (confirm("Reset all USB and CAN command configurations back to default patterns?")) {
+            if (confirm("Reset configurations?")) {
                 localStorage.removeItem('signifi_latch_config_v5');
                 config = JSON.parse(JSON.stringify(defaultConfig));
-                document.getElementById('config-baud').value = config.baudRate;
-                document.getElementById('config-calib-cmd').value = config.calibrationCmd;
-                document.getElementById('config-line-ending').value = config.lineEnding;
                 renderAdminInputs();
-                switchTab(activeAdminTab);
-                showNotification("Configuration reset to default commands.", "info");
+                showNotification("Reset to defaults.", "info");
             }
         }
         
@@ -1100,29 +949,20 @@
         function loadConfig() {
             const saved = localStorage.getItem('signifi_latch_config_v5');
             if (saved) {
-                try {
-                    const parsed = JSON.parse(saved);
-                    config = { ...defaultConfig, ...parsed };
-                } catch (e) {
-                    config = JSON.parse(JSON.stringify(defaultConfig));
-                }
-            } else {
-                config = JSON.parse(JSON.stringify(defaultConfig));
+                try { config = { ...defaultConfig, ...JSON.parse(saved) }; } catch (e) { config = JSON.parse(JSON.stringify(defaultConfig)); }
             }
             document.getElementById('config-baud').value = config.baudRate || "115200";
             document.getElementById('config-calib-cmd').value = config.calibrationCmd || "";
             document.getElementById('config-line-ending').value = config.lineEnding || "\\r\\n";
         }
 
-        function updateConfigSummary() {
-            document.getElementById('config-summary').textContent = `Config: ${config.baudRate} baud`;
-        }
+        function updateConfigSummary() { document.getElementById('config-summary').textContent = `Config: ${config.baudRate} baud`; }
 
         function renderAdminTabs() {
             const container = document.getElementById('tab-nav-container');
             let html = '';
             for (let i = 1; i <= 16; i++) {
-                html += `<button onclick="switchTab(${i})" id="tab-${i}" class="${i === 1 ? 'tab-active' : 'tab-inactive'} px-4 py-2 text-sm font-medium focus:outline-none rounded-t-lg">L${i}</button>`;
+                html += `<button onclick="switchTab(${i})" id="tab-${i}" class="${i === 1 ? 'tab-active' : 'tab-inactive'} px-4 py-2 text-sm font-medium rounded-t-lg">L${i}</button>`;
             }
             container.innerHTML = html;
         }
@@ -1130,62 +970,45 @@
         function renderAdminInputs() {
             const container = document.getElementById('latch-configs');
             container.innerHTML = ''; 
-            
             const targetConfig = currentAdminMode === 'USB' ? config.usb.latches : config.can.latches;
 
             for (let i = 1; i <= 16; i++) {
                 const current = targetConfig[i] || {};
-                
-                let inputsHtml = `
-                    <div id="content-tab-${i}" class="${i === activeAdminTab ? '' : 'hidden'} p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                container.innerHTML += `
+                    <div id="content-tab-${i}" class="${i === activeAdminTab ? '' : 'hidden'} p-4 bg-gray-50 border rounded-lg">
                         <h3 class="text-lg font-bold mb-4 text-gray-800">${currentAdminMode} Latch ${i} Configuration</h3>
                         
-                        <!-- Scan Settings -->
                         <div class="mb-5 p-4 bg-blue-50/60 rounded-xl border border-blue-100">
                             <div class="flex justify-between items-center mb-3">
                                 <p class="font-semibold text-blue-800 text-sm">Scan Configuration</p>
-                                <span id="admin-scan-status-${i}" class="text-xs px-2.5 py-1 rounded-md bg-gray-200 text-gray-700 font-mono">Idle</span>
+                                <span id="admin-scan-status-${i}" class="text-xs px-2.5 py-1 rounded bg-gray-200 text-gray-700 font-mono">Idle</span>
                             </div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">Scan Command</label>
                             <div class="flex gap-2 mb-3">
-                                <input type="text" id="latch-config-${i}-scanCmd" value="${current.scanCmd || ''}" class="flex-grow p-2.5 bg-white border border-gray-300 rounded-lg text-sm font-mono shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" onchange="updateConfigFromInputs('${currentAdminMode}')">
-                                <button onclick="adminTestScan(${i})" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-xs rounded-lg shadow font-bold flex items-center gap-1.5 transition">
-                                    <i class="fa-solid fa-paper-plane"></i> Test Scan
-                                </button>
+                                <input type="text" id="latch-config-${i}-scanCmd" value="${current.scanCmd || ''}" class="flex-grow p-2.5 bg-white border rounded-lg text-sm font-mono shadow-sm" onchange="updateConfigFromInputs('${currentAdminMode}')">
+                                <button onclick="adminTestScan(${i})" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-xs rounded-lg shadow font-bold">Test Scan</button>
                             </div>
-
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div>
-                                    <label class="block text-xs font-semibold text-green-700 mb-1">Open Feedback</label>
-                                    <input type="text" id="latch-config-${i}-openFb" value="${current.openFb || ''}" class="w-full p-2.5 bg-white border border-green-300 rounded-lg text-sm font-mono shadow-sm focus:ring-2 focus:ring-green-500 focus:outline-none" onchange="updateConfigFromInputs('${currentAdminMode}')">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-semibold text-red-700 mb-1">Close Feedback</label>
-                                    <input type="text" id="latch-config-${i}-closeFb" value="${current.closeFb || ''}" class="w-full p-2.5 bg-white border border-red-300 rounded-lg text-sm font-mono shadow-sm focus:ring-2 focus:ring-red-500 focus:outline-none" onchange="updateConfigFromInputs('${currentAdminMode}')">
-                                </div>
+                                <div><label class="block text-xs font-semibold text-green-700 mb-1">Open Feedback</label><input type="text" id="latch-config-${i}-openFb" value="${current.openFb || ''}" class="w-full p-2.5 bg-white border rounded-lg text-sm font-mono" onchange="updateConfigFromInputs('${currentAdminMode}')"></div>
+                                <div><label class="block text-xs font-semibold text-red-700 mb-1">Close Feedback</label><input type="text" id="latch-config-${i}-closeFb" value="${current.closeFb || ''}" class="w-full p-2.5 bg-white border rounded-lg text-sm font-mono" onchange="updateConfigFromInputs('${currentAdminMode}')"></div>
                             </div>
                         </div>
 
-                        <!-- Test Settings -->
                         <div class="p-4 bg-indigo-50/60 rounded-xl border border-indigo-100">
                             <div class="flex justify-between items-center mb-3">
-                                <p class="font-semibold text-indigo-800 text-sm">Test (Open) Configuration</p>
-                                <span id="admin-test-status-${i}" class="text-xs px-2.5 py-1 rounded-md bg-gray-200 text-gray-700 font-mono">Idle</span>
+                                <p class="font-semibold text-indigo-800 text-sm">Test Configuration</p>
+                                <span id="admin-test-status-${i}" class="text-xs px-2.5 py-1 rounded bg-gray-200 text-gray-700 font-mono">Idle</span>
                             </div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1">Test Command</label>
                             <div class="flex gap-2 mb-3">
-                                <input type="text" id="latch-config-${i}-testCmd" value="${current.testCmd || ''}" class="flex-grow p-2.5 bg-white border border-gray-300 rounded-lg text-sm font-mono shadow-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" onchange="updateConfigFromInputs('${currentAdminMode}')">
-                                <button onclick="adminTestCmd(${i})" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 text-xs rounded-lg shadow font-bold flex items-center gap-1.5 transition">
-                                    <i class="fa-solid fa-paper-plane"></i> Test Command
-                                </button>
+                                <input type="text" id="latch-config-${i}-testCmd" value="${current.testCmd || ''}" class="flex-grow p-2.5 bg-white border rounded-lg text-sm font-mono shadow-sm" onchange="updateConfigFromInputs('${currentAdminMode}')">
+                                <button onclick="adminTestCmd(${i})" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 text-xs rounded-lg shadow font-bold">Test Cmd</button>
                             </div>
-
                             <label class="block text-xs font-semibold text-green-700 mb-1">Pass Feedback</label>
-                            <input type="text" id="latch-config-${i}-testFb" value="${current.testFb || ''}" class="w-full p-2.5 bg-white border border-green-300 rounded-lg text-sm font-mono shadow-sm focus:ring-2 focus:ring-green-500 focus:outline-none" onchange="updateConfigFromInputs('${currentAdminMode}')">
+                            <input type="text" id="latch-config-${i}-testFb" value="${current.testFb || ''}" class="w-full p-2.5 bg-white border rounded-lg text-sm font-mono" onchange="updateConfigFromInputs('${currentAdminMode}')">
                         </div>
                     </div>
                 `;
-                container.innerHTML += inputsHtml;
             }
         }
 
@@ -1195,11 +1018,8 @@
                 const btn = document.getElementById(`tab-${i}`);
                 const content = document.getElementById(`content-tab-${i}`);
                 if(!btn || !content) continue; 
-                if(i === latchNum) {
-                    btn.classList.remove('tab-inactive'); btn.classList.add('tab-active'); content.classList.remove('hidden');
-                } else {
-                    btn.classList.add('tab-inactive'); btn.classList.remove('tab-active'); content.classList.add('hidden');
-                }
+                if(i === latchNum) { btn.classList.remove('tab-inactive'); btn.classList.add('tab-active'); content.classList.remove('hidden'); }
+                else { btn.classList.add('tab-inactive'); btn.classList.remove('tab-active'); content.classList.add('hidden'); }
             }
         }
         
@@ -1207,7 +1027,7 @@
             const container = document.getElementById('slot-grid');
             let html = '';
             for (let i = 1; i <= 16; i++) {
-                html += `<div id="slot-${i}" class="slot text-sm" onclick="toggleSlotManual(${i})" title="Click to manually toggle ready state">L${i}</div>`;
+                html += `<div id="slot-${i}" class="slot text-sm" onclick="toggleSlotManual(${i})" title="Click to toggle">L${i}</div>`;
             }
             container.innerHTML = html;
         }
@@ -1217,11 +1037,9 @@
             if (index > -1) {
                 scannedOpenLatches.splice(index, 1);
                 setSlotState(i, 'Unknown');
-                log("System", `Slot ${i} manually deselected.`);
             } else {
                 scannedOpenLatches.push(i);
                 setSlotState(i, 'Open', true);
-                log("System", `Slot ${i} manually marked OPEN and ready for testing.`);
             }
             updateScanStatusMsg();
             updateTestButtonState();
